@@ -194,6 +194,9 @@
 			</File>
 			<File
 				RelativePath=".\runtime.c"
+			/>
+			<File
+				RelativePath=".\sdl_ui.c"
 				>
 			</File>
 		</Filter>
@@ -220,6 +223,9 @@
 			</File>
 			<File
 				RelativePath=".\stat.h"
+			/>
+			<File
+				RelativePath=".\sdl_ui.h"
 				>
 			</File>
 		</Filter>

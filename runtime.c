@@ -43,6 +43,7 @@
 #include "plugin.h"
 #include "glue.h"
 #include "console.h"
+#include "sdl_ui.h"
 
 int
 stack4(unsigned short a, unsigned short b, unsigned short c, unsigned short d) {
@@ -236,11 +237,7 @@ MEMTOP() {
 	X = RAM_TOP&0xFF;
 	Y = RAM_TOP>>8;
 
-	/*
-	 * if we want to turn on the plugin
-	 * automatically at start, we can do it here.
-	 */
-	//plugin_on();
+	plugin_on();
 }
 
 /* MEMBOT */
@@ -822,6 +819,10 @@ GETIN() {
         }
         C = 0;
     } else {
+        int key = sdl_get_key();
+        if (key >= 0) {
+            A = key;
+        } else {
 #ifdef _WIN32
         if (_kbhit())
             A = _getch();
@@ -832,6 +833,7 @@ GETIN() {
         if (ch == EOF) { stdin_eof = 1; A = 0; }
         else A = ch;
 #endif
+        }
         if (A=='\n') A = '\r';
         C = 0;
     }
@@ -932,4 +934,3 @@ kernal_dispatch() {
 	}
 	return 1;
 }
-

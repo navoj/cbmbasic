@@ -7,6 +7,14 @@ TARGETOS = WINNT
 cvarsdll = $(cvarsdll) -DUNICODE -D_UNICODE
 !endif
 
+!ifdef SDL2DIR
+!ifndef SDL2_LIBDIR
+SDL2_LIBDIR = $(SDL2DIR)\lib\x86
+!endif
+cvarsdll = $(cvarsdll) -DHAVE_SDL2 /I"$(SDL2DIR)\include\SDL2"
+conlibsdll = $(conlibsdll) /LIBPATH:"$(SDL2_LIBDIR)" SDL2.lib
+!endif
+
 OUTDIR=.\bin\win32
 TARGET=$(OUTDIR)\cbmbasic.exe
 
@@ -22,5 +30,5 @@ clean:
 "$(OUTDIR)":
 	mkdir "$(OUTDIR)"
 
-"$(TARGET)": "$(OUTDIR)\cbmbasic.obj" "$(OUTDIR)\runtime.obj" "$(OUTDIR)\readdir.obj" "$(OUTDIR)\plugin.obj" "$(OUTDIR)\console.obj"
+"$(TARGET)": "$(OUTDIR)\cbmbasic.obj" "$(OUTDIR)\runtime.obj" "$(OUTDIR)\readdir.obj" "$(OUTDIR)\plugin.obj" "$(OUTDIR)\console.obj" "$(OUTDIR)\sdl_ui.obj"
 	$(link) $(ldebug) $(conlflags) -out:"$(TARGET)" $** $(conlibsdll)

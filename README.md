@@ -27,7 +27,34 @@ You can use cbmbasic in interactive mode by just running the binary without para
     $ ./hello.bas 
     HELLO WORLD!
 
-cbmbasic implements a small plugin system that lets developers add additional statements, functions etc. Right now, you can turn this on with "SYS 1" (turn off with "SYS 0"), and use the new statements LOCATE *y*, *x* (set cursor position), SYSTEM *string* (run command line command) and the extended WAIT *port*, *mask*, which implements the [Bill Gates easter egg](http://www.pagetable.com/?p=43).
+cbmbasic implements a small plugin system that lets developers add additional statements and functions. It is enabled automatically; use `SYS 0` to disable it and `SYS 1` to re-enable it. The original extensions include LOCATE *y*, *x* (set cursor position), SYSTEM *string* (run command line command), and extended WAIT *port*, *mask*, which implements the [Bill Gates easter egg](http://www.pagetable.com/?p=43).
+
+An optional SDL2 build adds `BEEP frequency,duration` (20-20000 Hz and
+1-5000 ms), `FRAME "title","message"` (a modal message box) or
+`FRAME x1,y1,x2,y2,color` (a rectangle outline), and graphics
+statements `SCREEN`, `CLS`, `TITLE`, `CSET`, `RECT x1,y1,x2,y2,color`,
+`PSET`, `BEGINFRAME`,
+`ENDFRAME`, `ANTIALIAS`, `LSET`, `FSET`, `LINE`, `CIRCLE`, `ELLIPSE`, `ARC`,
+`TRIANGLE`, `GPRINT`, `ALERT`, and `SLEEP`. `SCREEN 1` through `SCREEN 3`
+open a pixel canvas; `SCREEN 0` closes it. Logical canvas sizes are 800x400
+times the selected mode. `PEEK(1038)`/`PEEK(1040)` report the base dimensions,
+`PEEK(1042)` the selected mode, and `PEEK(1024)` the latest key or mouse event.
+Run `test/graphics.bas` as a smoke test.
+
+Install SDL2 development files and `pkg-config` first (on Ubuntu/Debian:
+`sudo apt install libsdl2-dev pkg-config`), then build with
+`make clean && make SDL=1`. The Makefile checks this dependency and prints an
+installation hint when it is missing. The default build has no SDL dependency; SDL
+statements report an error unless support is enabled. The extension parser is
+enabled automatically; `SYS 0` disables it and `SYS 1` re-enables it. For the
+legacy Windows makefile, set `SDL2DIR` to the SDL2
+development package directory when invoking `nmake`; override `SDL2_LIBDIR`
+if the SDL2 import library is not under `lib\x86`. Place `SDL2.dll` beside
+the resulting executable.
+
+`test/olivia9.bas` enables the extensions itself. Run it from the test
+directory with `cd test && ../cbmbasic olivia9.bas`; `PORTRT10.DAT` is in
+that directory.
 
 ## Internals
 The core of the BASIC interpreter is in the file `cbmbasic.c`, which is platform, endianness and bitness independent. For all I/O, it calls out into `runtime.c`, so it should be possible to adapt this project for any OS by just changing `runtime.c`.

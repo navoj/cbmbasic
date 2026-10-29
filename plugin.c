@@ -53,11 +53,14 @@
 #include "plugin.h"
 #include "glue.h"
 #include "console.h"
+#include "sdl_ui.h"
 
 static unsigned short
 get_chrptr() {
 	return RAM[0x7A] | RAM[0x7B]<<8;
 }
+
+static unsigned int sdl_event_counter;
 
 static void
 set_chrptr(unsigned short a) {
@@ -206,6 +209,10 @@ plugin_qplop() {
  */
 unsigned short
 plugin_gone() {
+	if ((++sdl_event_counter & 63) == 0 && sdl_poll_events()) {
+		sdl_screen(0);
+		exit(0);
+	}
 	set_chrptr(get_chrptr()+1);
 	for (;;) {
 		unsigned short chrptr;
@@ -231,42 +238,234 @@ plugin_gone() {
 			continue;
 		}
 
-                /* Implements the ANSI Set Graphics Mode
-		   as appears on http://ascii-table.com/ansi-escape-sequences.php
-	           Note that some attributes will be implemented differently depending on what
-                   terminal program you are using.
-                */
 		if (compare("ANSISGM")) {
 			char attr, fg, bg;
-			attr = get_byte(); /* Attribute */
+			attr = get_byte();
 			check_comma();
-			fg = get_byte(); /* Foreground color */
+			fg = get_byte();
 			check_comma();
-			bg = get_byte(); /* Background color */
-
-			if (attr < 0 || attr > 8) return error(ERROR_ILLEGAL_QUANTITY);
-			if (fg < 30 || fg > 37) return error(ERROR_ILLEGAL_QUANTITY);
-			if (bg < 40 || bg > 47) return error(ERROR_ILLEGAL_QUANTITY);
-
-			printf("\033[%d;%d;%dm",attr,bg,fg);
-	        	continue;
+			bg = get_byte();
+			if (attr > 8 || fg < 30 || fg > 37 || bg < 40 || bg > 47)
+				return error(ERROR_ILLEGAL_QUANTITY);
+			printf("\033[%d;%d;%dm", attr, bg, fg);
+			continue;
 		}
-
-                /* ANSI erase line */
 		if (compare("ANSIEL")) {
 			printf("\033[K");
-                }
-
-                /* ANSI save cursor pos */
+			continue;
+		}
 		if (compare("ANSISC")) {
 			printf("\033[s");
-                }
-
-                /* ANSI restore cursor pos */
+			continue;
+		}
 		if (compare("ANSIRC")) {
 			printf("\033[u");
-                }
+			continue;
+		}
 
+		if (compare("SCREEN")) {
+			unsigned short mode = get_word();
+			if (mode > 3 || sdl_screen(mode) != 0)
+				return error(ERROR_DEVICE_NOT_PRESENT);
+			continue;
+		}
+		if (compare("CLS")) {
+			if (sdl_clear() != 0)
+				clear_screen();
+			continue;
+		}
+		if (compare("TITLE")) {
+			char title[256];
+			get_string(title);
+			if (sdl_title(title) != 0)
+				return error(ERROR_DEVICE_NOT_PRESENT);
+			continue;
+		}
+		if (compare("CSET")) {
+			unsigned short index, red, green, blue, alpha;
+			index = get_word(); check_comma();
+			red = get_word(); check_comma();
+			green = get_word(); check_comma();
+			blue = get_word(); check_comma();
+			alpha = get_word();
+			if (sdl_color(index, red, green, blue, alpha) != 0)
+				return error(ERROR_ILLEGAL_QUANTITY);
+			continue;
+		}
+		if (compare("RECT")) {
+			unsigned short x1, y1, x2, y2, color;
+			x1 = get_word(); check_comma();
+			y1 = get_word(); check_comma();
+			x2 = get_word(); check_comma();
+			y2 = get_word(); check_comma();
+			color = get_word();
+			if (sdl_rect(x1, y1, x2, y2, color) != 0)
+				return error(ERROR_DEVICE_NOT_PRESENT);
+			continue;
+		}
+		if (compare("PSET")) {
+			unsigned short x, y, color;
+			x = get_word(); check_comma();
+			y = get_word(); check_comma();
+			color = get_word();
+			if (sdl_pixel(x, y, color) != 0)
+				return error(ERROR_DEVICE_NOT_PRESENT);
+			continue;
+		}
+		if (compare("LINE")) {
+			unsigned short x1, y1, x2, y2, color;
+			x1 = get_word(); check_comma();
+			y1 = get_word(); check_comma();
+			x2 = get_word(); check_comma();
+			y2 = get_word(); check_comma();
+			color = get_word();
+			if (sdl_line(x1, y1, x2, y2, color) != 0)
+				return error(ERROR_DEVICE_NOT_PRESENT);
+			continue;
+		}
+		if (compare("CIRCLE")) {
+			unsigned short x, y, radius, color, fill;
+			x = get_word(); check_comma();
+			y = get_word(); check_comma();
+			radius = get_word(); check_comma();
+			color = get_word(); check_comma();
+			fill = get_word();
+			if (sdl_circle(x, y, radius, color, fill) != 0)
+				return error(ERROR_DEVICE_NOT_PRESENT);
+			continue;
+		}
+		if (compare("ELLIPSE")) {
+			unsigned short x1, y1, x2, y2, color, fill;
+			x1 = get_word(); check_comma();
+			y1 = get_word(); check_comma();
+			x2 = get_word(); check_comma();
+			y2 = get_word(); check_comma();
+			color = get_word(); check_comma();
+			fill = get_word();
+			if (sdl_ellipse(x1, y1, x2, y2, color, fill) != 0)
+				return error(ERROR_DEVICE_NOT_PRESENT);
+			continue;
+		}
+		if (compare("ARC")) {
+			unsigned short x, y, radius, start, end, color, fill;
+			x = get_word(); check_comma();
+			y = get_word(); check_comma();
+			radius = get_word(); check_comma();
+			start = get_word(); check_comma();
+			end = get_word(); check_comma();
+			color = get_word(); check_comma();
+			fill = get_word();
+			if (sdl_arc(x, y, radius, start, end, color, fill) != 0)
+				return error(ERROR_DEVICE_NOT_PRESENT);
+			continue;
+		}
+		if (compare("TRIANGLE")) {
+			unsigned short x1, y1, x2, y2, x3, y3, color, fill;
+			x1 = get_word(); check_comma();
+			y1 = get_word(); check_comma();
+			x2 = get_word(); check_comma();
+			y2 = get_word(); check_comma();
+			x3 = get_word(); check_comma();
+			y3 = get_word(); check_comma();
+			color = get_word(); check_comma();
+			fill = get_word();
+			if (sdl_triangle(x1, y1, x2, y2, x3, y3, color, fill) != 0)
+				return error(ERROR_DEVICE_NOT_PRESENT);
+			continue;
+		}
+		if (compare("G\231")) {
+			char text[256];
+			unsigned short x, y, color;
+			get_string(text); check_comma();
+			x = get_word(); check_comma();
+			y = get_word(); check_comma();
+			color = get_word();
+			if (sdl_text(text, x, y, color) != 0)
+				return error(ERROR_DEVICE_NOT_PRESENT);
+			continue;
+		}
+		if (compare("FSET")) {
+			char name[256];
+			unsigned short size;
+			get_string(name); check_comma();
+			size = get_word();
+			sdl_font(name, size);
+			continue;
+		}
+		if (compare("BEGINFRAME")) {
+			sdl_begin_frame();
+			continue;
+		}
+		if (compare("\200FRAME")) {
+			sdl_end_frame();
+			continue;
+		}
+		if (compare("ANTIALIAS")) {
+			(void)get_word();
+			continue;
+		}
+		if (compare("LSET")) {
+			unsigned short width = get_word();
+			check_comma();
+			(void)get_word();
+			sdl_line_width(width);
+			continue;
+		}
+		if (compare("ALERT")) {
+			unsigned short sound = get_word();
+			if (sound > 5)
+				return error(ERROR_ILLEGAL_QUANTITY);
+			sdl_alert(sound);
+			continue;
+		}
+		if (compare("SLEEP")) {
+			sdl_sleep(get_word());
+			continue;
+		}
+		if (compare("BEEP")) {
+			unsigned short frequency, duration;
+			frequency = get_word();
+			check_comma();
+			duration = get_word();
+			if (frequency < 20 || frequency > 20000 ||
+			    duration < 1 || duration > 5000)
+				return error(ERROR_ILLEGAL_QUANTITY);
+			if (sdl_beep(frequency, duration) != 0)
+				return error(ERROR_DEVICE_NOT_PRESENT);
+			continue;
+		}
+		if (compare("FRAME")) {
+			int p = get_chrptr();
+			int scanned = 0;
+			int string_frame = 0;
+			while (scanned++ < 255 && p < 65536 && RAM[p] != 0 &&
+			    RAM[p] != ',' && RAM[p] != ':' &&
+			    RAM[p] != 13) {
+				if (RAM[p] == '"' || RAM[p] == '$') {
+					string_frame = 1;
+					break;
+				}
+				p++;
+			}
+			if (string_frame) {
+				char title[256], message[256];
+				get_string(title);
+				check_comma();
+				get_string(message);
+				if (sdl_frame(title, message) != 0)
+					return error(ERROR_DEVICE_NOT_PRESENT);
+			} else {
+				unsigned short x1, y1, x2, y2, color;
+				x1 = get_word(); check_comma();
+				y1 = get_word(); check_comma();
+				x2 = get_word(); check_comma();
+				y2 = get_word(); check_comma();
+				color = get_word();
+				if (sdl_frame_rect(x1, y1, x2, y2, color) != 0)
+					return error(ERROR_DEVICE_NOT_PRESENT);
+			}
+			continue;
+		}
 		/*
 		 * this example shows:
 		 * - how to override existing keywords
